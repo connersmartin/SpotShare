@@ -9,6 +9,6 @@ namespace SpotShare.Models
     {
         public string Id { get; set; }
         public string UserId { get; set; }
-        public string SpotifyUri { get; set; }
+        public string SpotifyUri { get; set; }        
     }
 }

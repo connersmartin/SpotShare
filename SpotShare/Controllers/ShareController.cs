@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using SpotShare.Models;
+using SpotShare.Services;
 
 namespace SpotShare.Controllers
 {
@@ -16,11 +17,24 @@ namespace SpotShare.Controllers
     {
         private readonly ILogger<ShareController> _logger;
         private readonly IConfiguration _config;
+        private readonly SpotApiService _spotService;
+        private readonly DataService _dataService;
+        private readonly Helper _helper;
+        private readonly LinkService _linkService;
 
-        public ShareController(ILogger<ShareController> logger, IConfiguration config)
+        public ShareController(ILogger<ShareController> logger,
+                              IConfiguration config,
+                              SpotApiService spotService,
+                              Helper helper,
+                              DataService dataService,
+                              LinkService linkService)
         {
             _logger = logger;
             _config = config;
+            _spotService = spotService;
+            _helper = helper;
+            _dataService = dataService;
+            _linkService = linkService;
         }
 
         public IActionResult Index()
@@ -34,14 +48,26 @@ namespace SpotShare.Controllers
         {
             //Get playlist names and uris
 
-            return View();
+            return PartialView();
         }
 
         [HttpPost]
-        public IActionResult CreateShare(PlaylistData playlist)
+        public async Task<IActionResult> CreateShare(PlaylistData playlist)
         {
+            //Get cookie
+            var token = Request.Cookies["spottoke"];
+            //Get userid from spotify with cookie
+            playlist.UserId = await _spotService.Access("get", token, "me",null);
+            playlist.Id = Guid.NewGuid().ToString();
+
+            var dataDict = _helper.Map(playlist);
+
+            await _dataService.AddData("playlistdata", playlist.UserId, dataDict, null);
+
+            var link = _linkService.GetLink(playlist);
+
             //Returns a view with a shareable link
-            return View();
+            return PartialView();
         }
 
         [HttpPost]
@@ -107,7 +133,8 @@ namespace SpotShare.Controllers
                     responseContent = response.Content.ReadAsStringAsync().Result;
                 }
                 var tokenCookie = JsonSerializer.Deserialize<Token>(responseContent);
-                HttpContext.Response.Cookies.Append("spotauthtoke", tokenCookie.access_token);
+                HttpContext.Response.Cookies.Append("spottoke", tokenCookie.access_token);
+                HttpContext.Response.Cookies.Append("spotrefresh", tokenCookie.refresh_token);
 
             }
 
