@@ -67,7 +67,7 @@ namespace SpotShare.Controllers
 
             playlist.Id = Guid.NewGuid().ToString();            
 
-            await _dataService.AddData<PlaylistData>("playlistdata", playlist.UserId, playlist, playlist.Id);
+            await _dataService.AddData<PlaylistData>("playlistdata", playlist, playlist.Id);
 
             var link = _linkService.GetLink(playlist);
 
@@ -87,11 +87,11 @@ namespace SpotShare.Controllers
             //Get the actual user id
             var userId = JsonSerializer.Deserialize<Dictionary<string, object>>(userResponse)["id"].ToString();
             //Get open shares
-            var dataReponse = await _dataService.GetData("playlistdata", userId);
+            var dataReponse = await _dataService.GetData("playlistdata", "UserId",userId);
 
             foreach (var data in dataReponse)
             {
-                var interim = _helper.MapObject<PlaylistData>(data.Value);
+                var interim = _helper.MapObject<PlaylistData>(data);
                 model.Add(interim);
             }
 
@@ -105,10 +105,10 @@ namespace SpotShare.Controllers
             //Re-auth self
             var model = new List<UserData>();
             //Get users for the playlist
-            var dataReponse = await _dataService.GetData("userdata",playlist.Id,"PlaylistId", playlist.Id);
+            var dataReponse = await _dataService.GetData("userdata","PlaylistId", playlist.Id);
             foreach (var data in dataReponse)
             {
-                var interim = _helper.MapObject<UserData>(data.Value);
+                var interim = _helper.MapObject<UserData>(data);
                 model.Add(interim);
             }
             //PlaybackService process push
@@ -130,7 +130,7 @@ namespace SpotShare.Controllers
                 Token = Request.Cookies["spottoke"],
                 RefreshToken = Request.Cookies["spotrefresh"]
             };
-            await _dataService.AddData<UserData>("userdata", user.PlaylistId, user, user.Id);
+            await _dataService.AddData<UserData>("userdata", user, user.Id);
 
             //return text instructions on how to make sure to use this
             return View();

@@ -21,9 +21,16 @@ namespace SpotShare.Services
         {
             _config = config;
         }
-
-        public async Task<Dictionary<string, object>> GetData(string collection,string document, string param=null, string val=null)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="collection">Top folder</param>
+        /// <param name="param">What attribute are you looking for</param>
+        /// <param name="val">what is that value?</param>
+        /// <returns></returns>
+        public async Task<List<Dictionary<string, object>>> GetData(string collection, string param=null, string val=null)
         {
+            var resultDict = new List<Dictionary<string, object>>();
             try
             {
                 var serviceAcct = GoogleCredential.FromJson(_config.GetValue<string>("jsonCreds"));
@@ -31,26 +38,20 @@ namespace SpotShare.Services
                            FirestoreClient.DefaultEndpoint.Host, FirestoreClient.DefaultEndpoint.Port,
                            serviceAcct.ToChannelCredentials());
                 FirestoreClient client = FirestoreClient.Create(channel);
-                FirestoreDb db = FirestoreDb.Create(_config.GetValue<string>("projectId"),client);
+                FirestoreDb db = FirestoreDb.Create(_config.GetValue<string>("projectId"), client);
                 Dictionary<string, object> results = new Dictionary<string, object>();
                 CollectionReference colRef = db.Collection(collection);
-                if (param != null && val != null)
-                {
-                    DocumentReference docRef = colRef.Document(document);
 
-                    var snapshot = await docRef.GetSnapshotAsync();
-                    results = snapshot.ToDictionary();
-                }
-                else
-                {
-                    QuerySnapshot snapshot = await colRef.GetSnapshotAsync();
-                    foreach (DocumentSnapshot doc in snapshot.Documents)
-                    {
-                        results = doc.ToDictionary();
-                    }
 
+                Query query = colRef.WhereEqualTo(param, val);
+                QuerySnapshot querySnapshot = await query.GetSnapshotAsync();
+
+                foreach (DocumentSnapshot documentSnapshot in querySnapshot.Documents)
+                {
+                    resultDict.Add(documentSnapshot.ToDictionary());
                 }
-                return results;
+
+                return resultDict;
             }
             catch (Exception ex)
             {
@@ -58,8 +59,15 @@ namespace SpotShare.Services
             }
 
         }
-
-        public async Task AddData<T>(string collection, string document, T obj , string id)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T">What kind of object are you sending me</typeparam>
+        /// <param name="collection">Top folder</param>
+        /// <param name="obj">The data</param>
+        /// <param name="id">The collection in the document</param>
+        /// <returns></returns>
+        public async Task AddData<T>(string collection, T obj , string id)
         {
             try
             {
@@ -71,11 +79,9 @@ namespace SpotShare.Services
 
                 FirestoreDb db = FirestoreDb.Create(_config.GetValue<string>("projectId"),client);
 
-                DocumentReference docRef = db.Collection(collection).Document(document);
+                CollectionReference docRef = db.Collection(collection);                             
 
-                var objDict = new Dictionary<string, object>(){ { id, obj } };
-
-                await docRef.SetAsync(objDict);
+                await docRef.AddAsync(obj);
 
             }
             catch (Exception ex)
