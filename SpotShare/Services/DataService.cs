@@ -1,6 +1,12 @@
-﻿using Google.Cloud.Firestore;
+﻿using Google.Apis.Auth.OAuth2;
+using Google.Cloud.Firestore;
+using Google.Cloud.Firestore.V1;
+using Google.Cloud.Storage.V1;
+using Grpc.Auth;
+using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,38 +24,64 @@ namespace SpotShare.Services
 
         public async Task<Dictionary<string, object>> GetData(string collection,string document, string param=null, string val=null)
         {
-            FirestoreDb db = FirestoreDb.Create(_config.GetValue<string>("projectId"));
-            Dictionary<string, object> results = new Dictionary<string, object>();
-            CollectionReference colRef = db.Collection(collection);
-            if (param!=null && val !=null)
+            try
             {
-                Query query = colRef.WhereEqualTo(param,val);
-                QuerySnapshot snapshot = await query.GetSnapshotAsync();
-                foreach (DocumentSnapshot doc in snapshot.Documents)
+                var serviceAcct = GoogleCredential.FromJson(_config.GetValue<string>("jsonCreds"));
+                Channel channel = new Channel(
+                           FirestoreClient.DefaultEndpoint.Host, FirestoreClient.DefaultEndpoint.Port,
+                           serviceAcct.ToChannelCredentials());
+                FirestoreClient client = FirestoreClient.Create(channel);
+                FirestoreDb db = FirestoreDb.Create(_config.GetValue<string>("projectId"),client);
+                Dictionary<string, object> results = new Dictionary<string, object>();
+                CollectionReference colRef = db.Collection(collection);
+                if (param != null && val != null)
                 {
-                    results = doc.ToDictionary();
-                }
-            }
-            else
-            {
-                QuerySnapshot snapshot = await colRef.GetSnapshotAsync();                    
-                foreach (DocumentSnapshot doc in snapshot.Documents)
-                {
-                   results = doc.ToDictionary();
-                }
+                    DocumentReference docRef = colRef.Document(document);
 
+                    var snapshot = await docRef.GetSnapshotAsync();
+                    results = snapshot.ToDictionary();
+                }
+                else
+                {
+                    QuerySnapshot snapshot = await colRef.GetSnapshotAsync();
+                    foreach (DocumentSnapshot doc in snapshot.Documents)
+                    {
+                        results = doc.ToDictionary();
+                    }
+
+                }
+                return results;
             }
-            return results;
+            catch (Exception ex)
+            {
+                throw ex;
+            }
 
         }
 
-        public async Task AddData(string collection, string document, Dictionary<string, object> dataDict, string id)
+        public async Task AddData<T>(string collection, string document, T obj , string id)
         {
-            FirestoreDb db = FirestoreDb.Create(_config.GetValue<string>("projectId"));
+            try
+            {
+                var serviceAcct = GoogleCredential.FromJson(_config.GetValue<string>("jsonCreds"));
+                Channel channel = new Channel(
+                           FirestoreClient.DefaultEndpoint.Host, FirestoreClient.DefaultEndpoint.Port,
+                           serviceAcct.ToChannelCredentials());
+                FirestoreClient client = FirestoreClient.Create(channel);
 
-            DocumentReference docRef = db.Collection(collection).Document(document);
+                FirestoreDb db = FirestoreDb.Create(_config.GetValue<string>("projectId"),client);
 
-            await docRef.SetAsync(dataDict);
+                DocumentReference docRef = db.Collection(collection).Document(document);
+
+                var objDict = new Dictionary<string, object>(){ { id, obj } };
+
+                await docRef.SetAsync(objDict);
+
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
 
     }

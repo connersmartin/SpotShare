@@ -4,11 +4,11 @@
 <hr />
 <div class="row">
     <div class="col-md-4">
-        <form asp-action="CreateShare">
+        <form >
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <label asp-for="SpotifyUri" class="control-label">In your spotify app, please select the item you wish to share and from the share menu, choose "Copy Spotify Uri" and paste it here </label>
-                <input asp-for="SpotifyUri" class="form-control" />
+                <input id="spotUri" asp-for="SpotifyUri" class="form-control" />
                 <span asp-validation-for="SpotifyUri" class="text-danger"></span>
             </div>
             <div class="form-group">

@@ -21,13 +21,15 @@ namespace SpotShare.Controllers
         private readonly DataService _dataService;
         private readonly Helper _helper;
         private readonly LinkService _linkService;
+        private readonly PlaybackService _playbackService;
 
         public ShareController(ILogger<ShareController> logger,
                               IConfiguration config,
                               SpotApiService spotService,
                               Helper helper,
                               DataService dataService,
-                              LinkService linkService)
+                              LinkService linkService,
+                              PlaybackService playbackService)
         {
             _logger = logger;
             _config = config;
@@ -35,6 +37,7 @@ namespace SpotShare.Controllers
             _helper = helper;
             _dataService = dataService;
             _linkService = linkService;
+            _playbackService = playbackService;
         }
 
         public IActionResult Index()
@@ -43,7 +46,7 @@ namespace SpotShare.Controllers
             //Then option to create share or view shares
             return View();
         }
-
+        [Route("Share/CreateShare")]
         public IActionResult CreateShare()
         {
             //Get playlist names and uris
@@ -52,94 +55,86 @@ namespace SpotShare.Controllers
         }
 
         [HttpPost]
+        [Route("Share/CreateShare")]
         public async Task<IActionResult> CreateShare(PlaylistData playlist)
         {
             //Get cookie
             var token = Request.Cookies["spottoke"];
             //Get userid from spotify with cookie
-            playlist.UserId = await _spotService.Access("get", token, "me",null);
-            playlist.Id = Guid.NewGuid().ToString();
+            var userResponse = await _spotService.Access("get", token, "me",null);
+            //Get the actual user id
+            playlist.UserId =JsonSerializer.Deserialize<Dictionary<string, object>>(userResponse)["id"].ToString();
 
-            var dataDict = _helper.Map(playlist);
+            playlist.Id = Guid.NewGuid().ToString();            
 
-            await _dataService.AddData("playlistdata", playlist.UserId, dataDict, null);
+            await _dataService.AddData<PlaylistData>("playlistdata", playlist.UserId, playlist, playlist.Id);
 
             var link = _linkService.GetLink(playlist);
 
             //Returns a view with a shareable link
-            return PartialView();
+            return PartialView("CreateShareResult", new Link() { Url = link });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> StartShare()
+        {
+            var model = new List<PlaylistData>();
+            //Re-auth self
+            //Get cookie
+            var token = Request.Cookies["spottoke"];
+            //Get userid from spotify with cookie
+            var userResponse = await _spotService.Access("get", token, "me", null);
+            //Get the actual user id
+            var userId = JsonSerializer.Deserialize<Dictionary<string, object>>(userResponse)["id"].ToString();
+            //Get open shares
+            var dataReponse = await _dataService.GetData("playlistdata", userId);
+
+            foreach (var data in dataReponse)
+            {
+                var interim = _helper.MapObject<PlaylistData>(data.Value);
+                model.Add(interim);
+            }
+
+            return PartialView(model);
+            
         }
 
         [HttpPost]
-        public void StartShare(PlaylistData playlist)
+        public async Task<IActionResult> StartShare([FromBody] PlaylistData playlist)
         {
             //Re-auth self
-           
+            var model = new List<UserData>();
             //Get users for the playlist
+            var dataReponse = await _dataService.GetData("userdata",playlist.Id,"PlaylistId", playlist.Id);
+            foreach (var data in dataReponse)
+            {
+                var interim = _helper.MapObject<UserData>(data.Value);
+                model.Add(interim);
+            }
             //PlaybackService process push
+            await _playbackService.ProcessPush(model,playlist.SpotifyUri);
+
+
+            return PartialView("ShareSuccess");
         }
 
-        [HttpPost]
-        public void AddToShare(string id)
+        [HttpGet]
+        public async Task<IActionResult> AddToShare(string id)
         {
-            //This is link clicked from user
-            //This will auth them
+            //This is a redirect from auth
             //Add them to the share
+            var user = new UserData()
+            {
+                Id = Guid.NewGuid().ToString(),
+                PlaylistId = id,
+                Token = Request.Cookies["spottoke"],
+                RefreshToken = Request.Cookies["spotrefresh"]
+            };
+            await _dataService.AddData<UserData>("userdata", user.PlaylistId, user, user.Id);
 
             //return text instructions on how to make sure to use this
-        }
-
-        //Auth workflow
-        public async Task<RedirectResult> Auth(bool user = false)
-        {
-            var scope = "user-modify-playback-state";
-            if (user)
-            {
-                scope = "user-read-email playlist-read-collaborative";
-            }
-            HttpResponseMessage response = new HttpResponseMessage();
-            using (var client = new HttpClient())
-            {
-                var baseUrl = "https://accounts.spotify.com/authorize";
-                baseUrl += "?client_id=" + _config.GetValue<string>("clientId");
-                baseUrl += "&response_type=code";
-                baseUrl += "&redirect_uri=" + _config.GetValue<string>("redirectUri");
-                baseUrl += "&scope="+scope;
-                var baseUri = new Uri(baseUrl);
-                response = await client.GetAsync(baseUri).ConfigureAwait(true);
-            }
-            return Redirect(response.RequestMessage.RequestUri.ToString());
-        }
-
-        //Second part of auth workflow
-        public async Task<IActionResult> CodeToken()
-        {
-            if (Request.Query.ContainsKey("code"))
-            {
-                HttpResponseMessage response;
-                var responseContent = "";
-                using (var client = new HttpClient())
-                {
-                    var baseUrl = new Uri("https://accounts.spotify.com/api/token");
-                    var body = new Dictionary<string, string>()
-                    {
-                        { "grant_type","authorization_code" },
-                        { "code", Request.Query["code"].ToString() },
-                        {"redirect_uri",  _config.GetValue<string>("redirectUri") },
-                        {"client_id",  _config.GetValue<string>("clientId")},
-                        {"client_secret",  _config.GetValue<string>("clientSecret") }
-                    };
-                    response = await client.PostAsync(baseUrl, new FormUrlEncodedContent(body)).ConfigureAwait(true);
-                    responseContent = response.Content.ReadAsStringAsync().Result;
-                }
-                var tokenCookie = JsonSerializer.Deserialize<Token>(responseContent);
-                HttpContext.Response.Cookies.Append("spottoke", tokenCookie.access_token);
-                HttpContext.Response.Cookies.Append("spotrefresh", tokenCookie.refresh_token);
-
-            }
-
-            return RedirectToAction("Index");
-        }
+            return View();
+        }        
 
         public IActionResult Privacy()
         {

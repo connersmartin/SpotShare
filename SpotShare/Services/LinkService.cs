@@ -19,7 +19,7 @@ namespace SpotShare.Services
         {
             var baseUrl = _config.GetValue<string>("baseUrl");
 
-            return string.Format("{0}Share/AddToShare?id={1}", baseUrl, playlist.Id);
+            return string.Format("{0}Auth/Auth?id={1}", baseUrl, playlist.Id);
            
         }
     }

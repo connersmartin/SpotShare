@@ -29,7 +29,7 @@ namespace SpotShare.Services
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                client.DefaultRequestHeaders.Add("auth", auth);
+                client.DefaultRequestHeaders.Add("Authorization", "Bearer "+auth);
                 switch (method)
                 {
                     case "get":
