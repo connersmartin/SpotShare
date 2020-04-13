@@ -37,7 +37,7 @@ namespace SpotShare.Services
                         break;
                     case "put":
                         var putParams = new StringContent(json, Encoding.UTF8, "application/json");
-                        response = await client.PostAsync(url + path, putParams);
+                        response = await client.PutAsync(url + path, putParams);
                         break;
                     default:
                         response = new HttpResponseMessage() { Content = new StringContent("Invalid method invoked") };

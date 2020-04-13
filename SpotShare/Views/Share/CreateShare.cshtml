@@ -4,7 +4,7 @@
 <hr />
 <div class="row">
     <div class="col-md-4">
-        <form >
+        <div >
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <label asp-for="SpotifyUri" class="control-label">In your spotify app, please select the item you wish to share and from the share menu, choose "Copy Spotify Uri" and paste it here </label>
@@ -12,16 +12,9 @@
                 <span asp-validation-for="SpotifyUri" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <Button id="createSubmit" class="btn btn-primary">Create</Button>
+                <button onclick="submitCreate()" class="btn btn-primary">Create</button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
-
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-}

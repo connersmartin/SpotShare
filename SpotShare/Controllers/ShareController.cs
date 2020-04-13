@@ -46,7 +46,7 @@ namespace SpotShare.Controllers
             //Then option to create share or view shares
             return View();
         }
-        [Route("Share/CreateShare")]
+        [HttpGet]
         public IActionResult CreateShare()
         {
             //Get playlist names and uris
@@ -55,9 +55,9 @@ namespace SpotShare.Controllers
         }
 
         [HttpPost]
-        [Route("Share/CreateShare")]
-        public async Task<IActionResult> CreateShare(PlaylistData playlist)
+        public async Task<IActionResult> ShareCreate(string id)
         {
+            var playlist = new PlaylistData() { SpotifyUri = id };
             //Get cookie
             var token = Request.Cookies["spottoke"];
             //Get userid from spotify with cookie
