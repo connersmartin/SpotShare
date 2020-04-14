@@ -17,5 +17,7 @@ namespace SpotShare.Models
         public string RefreshToken { get; set; }
         [FirestoreProperty]
         public string Id { get; set; }
+        [FirestoreProperty]
+        public string UserId { get; set; }
     }
 }

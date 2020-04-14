@@ -21,7 +21,7 @@ namespace SpotShare.Controllers
         public async Task<RedirectResult> Auth(bool user = false, string id = null)
         {
             var redirect = _config.GetValue<string>("redirectUri");
-            var scope = "user-modify-playback-state";
+            var scope = "user-modify-playback-state user-read-playback-state";
             if (id!=null)
             {
                 Response.Cookies.Append("playlistId", id);

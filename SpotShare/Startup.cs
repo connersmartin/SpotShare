@@ -29,6 +29,7 @@ namespace SpotShare
             services.AddTransient<DataService>();
             services.AddTransient<LinkService>();
             services.AddTransient<PlaybackService>();
+            services.AddTransient<TokenService>();
             services.AddTransient<Helper>();
         }
 

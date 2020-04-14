@@ -19,7 +19,17 @@ namespace SpotShare.Services
 
 		public async Task ProcessPush(List<UserData> users,string uri )
 		{
-			await Task.WhenAll(users.Select(x => PlayTrack(x,uri)));
+
+			Parallel.ForEach(users, (user) =>
+			{
+				var json = JsonSerializer.Serialize(new Dictionary<string, string>() { { "context_uri", uri } });
+				_spotApiService.Access("put", user.Token, "me/player/play", json);
+			});
+			//await Task.WhenAll(users.Select(x => PlayTrack(x,uri)));
+			/*foreach (var u in users)
+			{
+				await PlayTrack(u, uri);
+			}*/
 		}
 
 		public async Task PlayTrack(UserData user,string uri)

@@ -90,5 +90,36 @@ namespace SpotShare.Services
             }
         }
 
+        public async Task DeleteData(string collection, string param1 = null, string val1 = null, string param2 = null,string val2 = null)
+        {            
+            try
+            {
+                var serviceAcct = GoogleCredential.FromJson(_config.GetValue<string>("jsonCreds"));
+                Channel channel = new Channel(
+                           FirestoreClient.DefaultEndpoint.Host, FirestoreClient.DefaultEndpoint.Port,
+                           serviceAcct.ToChannelCredentials());
+                FirestoreClient client = FirestoreClient.Create(channel);
+                FirestoreDb db = FirestoreDb.Create(_config.GetValue<string>("projectId"), client);
+                Dictionary<string, object> results = new Dictionary<string, object>();
+                CollectionReference colRef = db.Collection(collection);
+
+
+                Query query = colRef.WhereEqualTo(param1, val1).WhereEqualTo(param2,val2);
+
+                QuerySnapshot querySnapshot = await query.GetSnapshotAsync();
+
+                foreach (DocumentSnapshot documentSnapshot in querySnapshot.Documents)
+                {
+                    await documentSnapshot.Reference.DeleteAsync();
+                }
+               
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+        }
+
     }
 }
